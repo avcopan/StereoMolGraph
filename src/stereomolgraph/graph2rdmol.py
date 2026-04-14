@@ -318,34 +318,50 @@ def stereo_mol_graph_to_rdmol(
                 else:
                     raise RuntimeError("This should not happen")
 
-        rd_a1 = map_num_idx_dict[a1]
-        rd_a2 = map_num_idx_dict[a2]
-        rd_bond = mol.GetBondBetweenAtoms(rd_a1, rd_a2)
+        rd_bond = mol.GetBondBetweenAtoms(map_num_idx_dict[a1], map_num_idx_dict[a2])
         new_a1 = idx_map_num_dict[rd_bond.GetBeginAtomIdx()]
         new_a2 = idx_map_num_dict[rd_bond.GetEndAtomIdx()]
 
         assert {a1, a2} == {new_a1, new_a2}
 
         if isinstance(b_stereo, PlanarBond):
-            mol.GetAtomWithIdx(rd_a1).SetHybridization(Chem.HybridizationType.SP2)
-            mol.GetAtomWithIdx(rd_a2).SetHybridization(Chem.HybridizationType.SP2)
+            # mol.GetAtomWithIdx(rd_a1).SetHybridization(Chem.HybridizationType.SP2)
+            # mol.GetAtomWithIdx(rd_a2).SetHybridization(Chem.HybridizationType.SP2)
+
             rd_bond.SetBondType(Chem.BondType.DOUBLE)
             if b_stereo.parity is None:
                 rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREONONE)
 
-            elif (a1, a2) == (new_a1, new_a2):
-                rd_bond.SetStereoAtoms(
-                    map_num_idx_dict[b_stereo.atoms[0]],
-                    map_num_idx_dict[b_stereo.atoms[4]],
-                )
-                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOZ)
-
             elif (a1, a2) == (new_a2, new_a1):
+                b_stereo = b_stereo.__class__(
+                    atoms=tuple(b_stereo.atoms[i] for i in (4, 5, 3, 2, 0, 1)),
+                    parity=b_stereo.parity,
+                )
+
+            if b_stereo.atoms[0] and b_stereo.atoms[4]:
                 rd_bond.SetStereoAtoms(
-                    map_num_idx_dict[b_stereo.atoms[4]],
                     map_num_idx_dict[b_stereo.atoms[0]],
+                    map_num_idx_dict[b_stereo.atoms[4]],
                 )
                 rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOZ)
+            elif b_stereo.atoms[1] and b_stereo.atoms[5]:
+                rd_bond.SetStereoAtoms(
+                    map_num_idx_dict[b_stereo.atoms[1]],
+                    map_num_idx_dict[b_stereo.atoms[5]],
+                )
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOZ)
+            elif b_stereo.atoms[0] and b_stereo.atoms[5]:
+                rd_bond.SetStereoAtoms(
+                    map_num_idx_dict[b_stereo.atoms[0]],
+                    map_num_idx_dict[b_stereo.atoms[5]],
+                )
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOE)
+            elif b_stereo.atoms[1] and b_stereo.atoms[4]:
+                rd_bond.SetStereoAtoms(
+                    map_num_idx_dict[b_stereo.atoms[1]],
+                    map_num_idx_dict[b_stereo.atoms[4]],
+                )
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOE)
 
             else:
                 raise Exception(f"something wrong with {b_stereo}")

@@ -588,6 +588,23 @@ def circular_fingerprint(
     accumulate: bool = False,
     include_hydrogens: bool = False,
 ) -> np.ndarray:
+    """Build a circular fingerprint for a molecular graph.
+
+    If ``accumulate`` is ``True``, identifiers from every radius up to the
+    requested radius are included. Otherwise, only the last radius is used.
+    If ``include_hydrogens`` is ``False``, atom environments centered on
+    hydrogens are excluded.
+
+    :param graph: Molecular graph to fingerprint.
+    :param radius: Maximum refinement radius to include.
+    :param n_bits: Length of the folded fingerprint. If ``0`` or ``None``,
+        return the unique integer identifiers instead of a folded bit/count vector.
+    :param count: If ``True``, all unique values are used once.
+    :param accumulate: Whether to include identifiers from all radii up to
+        ``radius`` instead of only the final radius.
+    :param include_hydrogens: Whether to include hydrogen-centered
+        environments.
+    """
     gen = _circular_generator(graph)
 
     all_colors: Sequence[np.ndarray] = [] if accumulate else deque([], maxlen=1)
@@ -605,7 +622,12 @@ def circular_fingerprint(
 
     if not all_colors:
         return np.zeros(n_bits, dtype=np.uint32)
-    fp = modulo_fold(np.concatenate(all_colors), n_bits, count=count)
+
+    concatonated = np.concatenate(all_colors)
+    if n_bits:
+        fp = modulo_fold(concatonated, n_bits, count=count)
+    else:
+        fp = np.unique(concatonated, sorted=False)
     return fp
 
 
@@ -617,6 +639,23 @@ def circular_stereo_fingerprint(
     accumulate: bool = False,
     include_hydrogens: bool = False,
 ) -> np.ndarray:
+    """Build a circular stereo fingerprint for a molecular graph.
+
+    If ``accumulate`` is ``True``, identifiers from every radius up to the
+    requested radius are included. Otherwise, only the last radius is used.
+    If ``include_hydrogens`` is ``False``, atom environments centered on
+    hydrogens are excluded.
+
+    :param graph: Molecular graph to fingerprint.
+    :param radius: Maximum refinement radius to include.
+    :param n_bits: Length of the folded fingerprint. If ``0`` or ``None``,
+        return the unique integer identifiers instead of a folded bit/count vector.
+    :param count: If ``True``, all unique values are used once.
+    :param accumulate: Whether to include identifiers from all radii up to
+        ``radius`` instead of only the final radius.
+    :param include_hydrogens: Whether to include hydrogen-centered
+        environments.
+    """
     gen = _circular_stereo_generator(graph)
 
     all_colors: Sequence[np.ndarray] = [] if accumulate else deque([], maxlen=1)
@@ -634,5 +673,10 @@ def circular_stereo_fingerprint(
 
     if not all_colors:
         return np.zeros(n_bits, dtype=np.uint32)
-    fp = modulo_fold(np.concatenate(all_colors), n_bits, count=count)
+
+    concatonated = np.concatenate(all_colors)
+    if n_bits:
+        fp = modulo_fold(concatonated, n_bits, count=count)
+    else:
+        fp = np.unique(concatonated, sorted=False)
     return fp

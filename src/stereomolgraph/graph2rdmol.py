@@ -329,10 +329,8 @@ def stereo_mol_graph_to_rdmol(
             # mol.GetAtomWithIdx(rd_a2).SetHybridization(Chem.HybridizationType.SP2)
 
             rd_bond.SetBondType(Chem.BondType.DOUBLE)
-            if b_stereo.parity is None:
-                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREONONE)
 
-            elif (a1, a2) == (new_a2, new_a1):
+            if (a1, a2) == (new_a2, new_a1):
                 b_stereo = b_stereo.__class__(
                     atoms=tuple(b_stereo.atoms[i] for i in (4, 5, 3, 2, 0, 1)),
                     parity=b_stereo.parity,
@@ -365,6 +363,9 @@ def stereo_mol_graph_to_rdmol(
 
             else:
                 raise Exception(f"something wrong with {b_stereo}")
+
+            if b_stereo.parity is None:
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREONONE)
 
         elif isinstance(b_stereo, AtropBond):
             if (a1, a2) == (new_a1, new_a2):

@@ -10,6 +10,7 @@ from typing import (
     Literal,
     Protocol,
     TypeVar,
+    cast,
     runtime_checkable,
 )
 
@@ -93,6 +94,8 @@ class BondStereo(Stereo[A, P], Protocol, Generic[A, P]):
 
 
 class _StereoMixin(Generic[A, P]):
+    __slots__ = ("atoms", "parity", "_is_frozen")
+
     PERMUTATION_GROUP: Iterable[A]
     inversion: None | A
     atoms: A
@@ -102,11 +105,19 @@ class _StereoMixin(Generic[A, P]):
         return f"{self.__class__.__name__}({self.atoms}, {self.parity})"
 
     def __init__(self, atoms: A, parity: P = None):
-        assert len(atoms) == len(self.PERMUTATION_GROUP[0]), (
-            f"Atoms should be of length {(len(self.PERMUTATION_GROUP[0]),)} but got {len(atoms)}"
-        )
-        self.atoms = atoms
-        self.parity = parity
+        object.__setattr__(self, "_is_frozen", False)
+        atoms_tuple = cast(A, tuple(atoms))
+        assert len(atoms_tuple) == len(self.PERMUTATION_GROUP[0])
+        object.__setattr__(self, "atoms", atoms_tuple)
+        object.__setattr__(self, "parity", parity)
+        object.__setattr__(self, "_is_frozen", True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_is_frozen", False):
+            raise AttributeError(
+                f"{self.__class__.__name__} is immutable; cannot set {name!r}"
+            )
+        object.__setattr__(self, name, value)
 
     def _perm_atoms(self) -> Iterator[A]:
         if self.parity is None:

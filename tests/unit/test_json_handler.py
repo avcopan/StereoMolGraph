@@ -12,7 +12,7 @@ from stereomolgraph import (
 from stereomolgraph.coords import Geometry
 from stereomolgraph.experimental import JSONHandler
 from stereomolgraph.graphs.crg import Change
-from stereomolgraph.stereodescriptors import Tetrahedral
+from stereomolgraph.stereodescriptors import PlanarBond, Tetrahedral
 
 
 def _build_sample_molgraph() -> MolGraph:
@@ -66,9 +66,7 @@ def sample_scrg(data_path: Path) -> StereoCondensedReactionGraph:
     reactant = Geometry.from_xyz_file(
         data_path / "methylamine_phosgenation_trans_r.xyz"
     )
-    product = Geometry.from_xyz_file(
-        data_path / "methylamine_phosgenation_trans_p.xyz"
-    )
+    product = Geometry.from_xyz_file(data_path / "methylamine_phosgenation_trans_p.xyz")
     transition_state = Geometry.from_xyz_file(
         data_path / "methylamine_phosgenation_trans_ts.xyz"
     )
@@ -95,6 +93,19 @@ def test_json_roundtrip_stereo_molgraph(
 
     assert isinstance(deserialized, StereoMolGraph)
     assert deserialized == sample_stereo_molgraph
+
+
+def test_json_roundtrip_planar_bond_with_null_atoms(
+    sample_molgraph: MolGraph,
+) -> None:
+    smg = StereoMolGraph(sample_molgraph)
+    smg.set_bond_stereo(PlanarBond((0, None, 4, 5, 7, None), 0))
+
+    serialized = JSONHandler.json_serialize(smg)
+    deserialized = JSONHandler.json_deserialize(serialized)
+
+    assert isinstance(deserialized, StereoMolGraph)
+    assert deserialized == smg
 
 
 def test_json_roundtrip_condensed_reaction_graph(

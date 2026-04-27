@@ -135,7 +135,8 @@ class JSONHandler:
             return None
         class_name, (atoms, parity) = next(iter(payload.items()))
         stereo_cls = STEREO_CLASSES[class_name]
-        return stereo_cls(tuple(int(a) for a in atoms), parity)
+        stereo_atoms = tuple(None if atom is None else int(atom) for atom in atoms)
+        return stereo_cls(stereo_atoms, parity)
 
     @classmethod
     def json_deserialize(cls, payload: str, freeze=True) -> MolGraph:

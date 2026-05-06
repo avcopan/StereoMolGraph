@@ -43,8 +43,8 @@ class _Parameters(NamedTuple):
     """
 
     # Neighborhood
-    g1_nbrhd: Mapping[AtomId, set[AtomId]]
-    g2_nbrhd: Mapping[AtomId, set[AtomId]]
+    g1_nbrhd: Mapping[AtomId, frozenset[AtomId]]
+    g2_nbrhd: Mapping[AtomId, frozenset[AtomId]]
     # atomid: label
     g1_labels: Mapping[AtomId, np.int64]
     g2_labels: Mapping[AtomId, np.int64]
@@ -183,10 +183,12 @@ def _sanity_check_and_init(
             return None
 
     if atom_labels is None:
-        g1_labels = {a: h for a, h in zip(g1.atoms, label_hash(g1))}
-        g2_labels = {a: h for a, h in zip(g2.atoms, label_hash(g2))}
+        g1_labels_arr = label_hash(g1)
+        g2_labels_arr = label_hash(g2)
     else:
-        g1_labels, g2_labels = atom_labels
+        g1_labels_arr, g2_labels_arr = atom_labels
+    g1_labels = {a: h for a, h in zip(g1.atoms, g1_labels_arr)}
+    g2_labels = {a: h for a, h in zip(g2.atoms, g2_labels_arr)}
 
     g1_labels_counter = Counter(g1_labels.values())
     g2_labels_counter = Counter(g2_labels.values())
@@ -291,7 +293,11 @@ def vf2pp_all_isomorphisms(
     | StereoMolGraph
     | CondensedReactionGraph
     | StereoCondensedReactionGraph,
-    atom_labels: None | tuple[Mapping[AtomId, int], Mapping[AtomId, int]] = None,
+    atom_labels: None
+    | tuple[
+        np.ndarray[tuple[int], np.dtype[np.int64]],
+        np.ndarray[tuple[int], np.dtype[np.int64]],
+    ] = None,
     stereo: bool = False,
     stereo_change: bool = False,
     subgraph: bool = False,

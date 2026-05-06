@@ -5,7 +5,7 @@ from collections import Counter
 
 from stereomolgraph import Bond, StereoMolGraph
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.experimental.bond_sym import (
+from stereomolgraph.experimental.sym_num import (
     AtropBond,
     NonRotatableBond13,
     NonRotatableBond23,
@@ -47,7 +47,8 @@ def external_symmetry_number(graph: StereoMolGraph) -> int:
         )
 
     mappings = tuple(
-        vf2pp_all_isomorphisms(
+        {**mapping, None: None}
+        for mapping in vf2pp_all_isomorphisms(
             graph,
             graph,
             stereo=True,
@@ -82,11 +83,6 @@ def external_symmetry_number(graph: StereoMolGraph) -> int:
         auto_cls_int: bond_auto_set[bond]
         for bond, auto_cls_int in bond_auto_int.items()
     }
-
-    def _map_optional_atom(atom: int | None, mapping: dict[int, int]) -> int | None:
-        if atom is None:
-            return None
-        return mapping[atom]
 
     def _ordered_three_neighbors(
         atom: int,
@@ -208,43 +204,7 @@ def external_symmetry_number(graph: StereoMolGraph) -> int:
         state: GeneratedBondStereo,
         mapping: dict[int, int],
     ) -> GeneratedBondStereo:
-        if isinstance(state, NonRotatableBond33):
-            atoms = state.atoms
-            mapped = (
-                _map_optional_atom(atoms[0], mapping),
-                _map_optional_atom(atoms[1], mapping),
-                _map_optional_atom(atoms[2], mapping),
-                mapping[atoms[3]],
-                mapping[atoms[4]],
-                _map_optional_atom(atoms[5], mapping),
-                _map_optional_atom(atoms[6], mapping),
-                _map_optional_atom(atoms[7], mapping),
-            )
-            return NonRotatableBond33(atoms=mapped, parity=1)
-
-        if isinstance(state, NonRotatableBond23):
-            atoms = state.atoms
-            mapped = (
-                _map_optional_atom(atoms[0], mapping),
-                _map_optional_atom(atoms[1], mapping),
-                mapping[atoms[2]],
-                mapping[atoms[3]],
-                _map_optional_atom(atoms[4], mapping),
-                _map_optional_atom(atoms[5], mapping),
-                _map_optional_atom(atoms[6], mapping),
-            )
-            return NonRotatableBond23(atoms=mapped, parity=1)
-
-        atoms = state.atoms
-        mapped = (
-            _map_optional_atom(atoms[0], mapping),
-            mapping[atoms[1]],
-            mapping[atoms[2]],
-            _map_optional_atom(atoms[3], mapping),
-            _map_optional_atom(atoms[4], mapping),
-            _map_optional_atom(atoms[5], mapping),
-        )
-        return NonRotatableBond13(atoms=mapped, parity=1)
+        return state.__class__(atoms=tuple(mapping[a] for a in state.atoms), parity=1)
 
     counter: dict[
         BondAutoCls,

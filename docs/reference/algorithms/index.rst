@@ -4,6 +4,11 @@ Algorithms
 .. grid:: 1
    :gutter: 1
 
+   .. grid-item-card:: Circular
+      :link: circular
+      :link-type: doc
+      :text-align: center  
+
    .. grid-item-card:: Isomorphism
       :link: isomorphism
       :link-type: doc
@@ -14,5 +19,6 @@ Algorithms
    :hidden:
 
    isomorphism
+   circular
 
 

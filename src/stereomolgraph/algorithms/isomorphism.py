@@ -147,8 +147,8 @@ def _sanity_check_and_init(
     g2: StereoMolGraph | MolGraph,
     atom_labels: None
     | tuple[
-        np.ndarray[tuple[int], np.dtype[np.int64]],
-        np.ndarray[tuple[int], np.dtype[np.int64]],
+        Mapping[AtomId, np.int64],
+        Mapping[AtomId, np.int64],
     ] = None,
     stereo: bool = False,
     stereo_change: bool = False,
@@ -183,12 +183,10 @@ def _sanity_check_and_init(
             return None
 
     if atom_labels is None:
-        g1_labels_arr = label_hash(g1)
-        g2_labels_arr = label_hash(g2)
+        g1_labels = {a: h for a, h in zip(g1.atoms, label_hash(g1))}
+        g2_labels = {a: h for a, h in zip(g2.atoms, label_hash(g2))}
     else:
-        g1_labels_arr, g2_labels_arr = atom_labels
-    g1_labels = {a: h for a, h in zip(g1.atoms, g1_labels_arr)}
-    g2_labels = {a: h for a, h in zip(g2.atoms, g2_labels_arr)}
+        g1_labels, g2_labels = atom_labels
 
     g1_labels_counter = Counter(g1_labels.values())
     g2_labels_counter = Counter(g2_labels.values())
@@ -295,8 +293,8 @@ def vf2pp_all_isomorphisms(
     | StereoCondensedReactionGraph,
     atom_labels: None
     | tuple[
-        np.ndarray[tuple[int], np.dtype[np.int64]],
-        np.ndarray[tuple[int], np.dtype[np.int64]],
+        Mapping[AtomId, np.int64],
+        Mapping[AtomId, np.int64],
     ] = None,
     stereo: bool = False,
     stereo_change: bool = False,

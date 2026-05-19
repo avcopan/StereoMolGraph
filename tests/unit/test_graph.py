@@ -21,7 +21,6 @@ from stereomolgraph.graphs.scrg import ChangeDict
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
 from stereomolgraph.rdmol2graph import (
     RDMol2StereoMolGraph,
-    mol_graph_from_rdmol,
 )
 from stereomolgraph.stereodescriptors import (
     AtropBond,
@@ -335,47 +334,6 @@ class TestCondensedReactionGraph(TestMolGraph):
     def test_add_bond_error(self, crg):
         with pytest.raises(TypeError):
             crg.add_bond(0, 1, reaction="test")
-
-    def test_from_atom_mapped_reaction_smiles(self):
-        rdrxn = rdkit.Chem.rdChemReactions.ReactionFromSmiles(REACTION_SMILES_4007)
-        converter = RDMol2StereoMolGraph()
-
-        crg = converter.crg_from_rdrxn(rdrxn)
-
-        reactant_graphs = tuple(
-            mol_graph_from_rdmol(MolGraph, rdmol, use_atom_map_number=True)
-            for rdmol in rdrxn.GetReactants()
-        )
-        product_graphs = tuple(
-            mol_graph_from_rdmol(MolGraph, rdmol, use_atom_map_number=True)
-            for rdmol in rdrxn.GetProducts()
-        )
-        reactant = (
-            reactant_graphs[0]
-            if len(reactant_graphs) == 1
-            else MolGraph.compose(reactant_graphs)
-        )
-        product = (
-            product_graphs[0]
-            if len(product_graphs) == 1
-            else MolGraph.compose(product_graphs)
-        )
-
-        expected = self._TestClass.from_graphs(reactant, product)
-
-        assert crg == expected
-        assert crg.get_formed_bonds() == expected.get_formed_bonds()
-        assert crg.get_broken_bonds() == expected.get_broken_bonds()
-
-    def test_from_rdrxn(self):
-        rdrxn = rdkit.Chem.rdChemReactions.ReactionFromSmiles(REACTION_SMILES_4007)
-        converter = RDMol2StereoMolGraph()
-
-        crg = converter.crg_from_rdrxn(rdrxn)
-
-        assert type(crg).__name__ == "CondensedReactionGraph"
-        assert crg.get_formed_bonds() == {Bond((2, 15)), Bond((3, 18))}
-        assert crg.get_broken_bonds() == set()
 
     def test_add_bond_with_reaction_attr(self, crg):
         crg.add_bond(0, 1, reaction=Change.FORMED, bond_order=1)

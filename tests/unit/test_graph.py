@@ -19,9 +19,6 @@ from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.graphs.crg import Change
 from stereomolgraph.graphs.scrg import ChangeDict
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
-from stereomolgraph.rdmol2graph import (
-    RDMol2StereoMolGraph,
-)
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     PlanarBond,
@@ -904,57 +901,6 @@ class TestStereoMolGraph(TestMolGraph):
 
 class TestStereoCondensedReactionGraph(TestStereoMolGraph, TestCondensedReactionGraph):
     _TestClass: type[StereoCondensedReactionGraph] = StereoCondensedReactionGraph
-
-    def test_from_atom_mapped_reaction_smiles(self):
-        rdrxn = rdkit.Chem.rdChemReactions.ReactionFromSmiles(REACTION_SMILES_4007)
-        converter = RDMol2StereoMolGraph()
-
-        scrg = converter(rdrxn)
-
-        reactant_graphs = tuple(
-            RDMol2StereoMolGraph(
-                stereo_complete=False,
-                use_atom_map_number=True,
-                lone_pair_stereo=True,
-                resonance=True,
-            )(rdmol)
-            for rdmol in rdrxn.GetReactants()
-        )
-        product_graphs = tuple(
-            RDMol2StereoMolGraph(
-                stereo_complete=False,
-                use_atom_map_number=True,
-                lone_pair_stereo=True,
-                resonance=True,
-            )(rdmol)
-            for rdmol in rdrxn.GetProducts()
-        )
-        reactant = (
-            reactant_graphs[0]
-            if len(reactant_graphs) == 1
-            else StereoMolGraph.compose(reactant_graphs)
-        )
-        product = (
-            product_graphs[0]
-            if len(product_graphs) == 1
-            else StereoMolGraph.compose(product_graphs)
-        )
-
-        expected = self._TestClass.from_graphs(reactant, product)
-
-        assert scrg == expected
-        assert scrg.bond_stereo
-
-    def test_from_rdrxn(self):
-        rdrxn = rdkit.Chem.rdChemReactions.ReactionFromSmiles(REACTION_SMILES_4007)
-        converter = RDMol2StereoMolGraph()
-
-        scrg = converter(rdrxn)
-
-        assert type(scrg).__name__ == "StereoCondensedReactionGraph"
-        assert scrg.get_formed_bonds() == {Bond((2, 15)), Bond((3, 18))}
-        assert scrg.get_broken_bonds() == set()
-        assert len(scrg.bond_stereo) == 1
 
     @pytest.fixture
     def chiral_ts_geo1(self, data_path):

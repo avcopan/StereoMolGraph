@@ -4,8 +4,9 @@ from itertools import permutations
 
 import numpy as np
 import pytest
-import rdkit.Chem  # type: ignore
-import rdkit.Chem.rdDistGeom  # type: ignore
+import rdkit.Chem
+import rdkit.Chem.rdChemReactions
+import rdkit.Chem.rdDistGeom
 
 from stereomolgraph import (
     Bond,
@@ -18,6 +19,10 @@ from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.graphs.crg import Change
 from stereomolgraph.graphs.scrg import ChangeDict
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
+from stereomolgraph.rdmol2graph import (
+    RDMol2StereoMolGraph,
+    mol_graph_from_rdmol,
+)
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     PlanarBond,
@@ -26,6 +31,13 @@ from stereomolgraph.stereodescriptors import (
     TrigonalBipyramidal,
 )
 from stereomolgraph.xyz2graph import atom_stereo_from_coords
+
+REACTION_SMILES_4007 = (
+    "[CH2:1]1[CH:2]=[CH:3][N:4]([CH3:5])[CH:6]=[C:7]1[C:8]([NH2:9])=[O:10]."
+    "[CH3:11][O:12][C:13](=[O:14])[C:15]([CH3:16])=[O+:17][O-:18]>>"
+    "[CH2:1]1[C@H:2]2[C@@H:3]([N:4]([CH3:5])[CH:6]=[C:7]1[C:8]([NH2:9])=[O:10])"
+    "[O:18][O:17][C:15]2([C:13]([O:12][CH3:11])=[O:14])[CH3:16]"
+)
 
 
 class TestMolGraph:
@@ -323,6 +335,47 @@ class TestCondensedReactionGraph(TestMolGraph):
     def test_add_bond_error(self, crg):
         with pytest.raises(TypeError):
             crg.add_bond(0, 1, reaction="test")
+
+    def test_from_atom_mapped_reaction_smiles(self):
+        rdrxn = rdkit.Chem.rdChemReactions.ReactionFromSmiles(REACTION_SMILES_4007)
+        converter = RDMol2StereoMolGraph()
+
+        crg = converter.crg_from_rdrxn(rdrxn)
+
+        reactant_graphs = tuple(
+            mol_graph_from_rdmol(MolGraph, rdmol, use_atom_map_number=True)
+            for rdmol in rdrxn.GetReactants()
+        )
+        product_graphs = tuple(
+            mol_graph_from_rdmol(MolGraph, rdmol, use_atom_map_number=True)
+            for rdmol in rdrxn.GetProducts()
+        )
+        reactant = (
+            reactant_graphs[0]
+            if len(reactant_graphs) == 1
+            else MolGraph.compose(reactant_graphs)
+        )
+        product = (
+            product_graphs[0]
+            if len(product_graphs) == 1
+            else MolGraph.compose(product_graphs)
+        )
+
+        expected = self._TestClass.from_graphs(reactant, product)
+
+        assert crg == expected
+        assert crg.get_formed_bonds() == expected.get_formed_bonds()
+        assert crg.get_broken_bonds() == expected.get_broken_bonds()
+
+    def test_from_rdrxn(self):
+        rdrxn = rdkit.Chem.rdChemReactions.ReactionFromSmiles(REACTION_SMILES_4007)
+        converter = RDMol2StereoMolGraph()
+
+        crg = converter.crg_from_rdrxn(rdrxn)
+
+        assert type(crg).__name__ == "CondensedReactionGraph"
+        assert crg.get_formed_bonds() == {Bond((2, 15)), Bond((3, 18))}
+        assert crg.get_broken_bonds() == set()
 
     def test_add_bond_with_reaction_attr(self, crg):
         crg.add_bond(0, 1, reaction=Change.FORMED, bond_order=1)
@@ -893,6 +946,57 @@ class TestStereoMolGraph(TestMolGraph):
 
 class TestStereoCondensedReactionGraph(TestStereoMolGraph, TestCondensedReactionGraph):
     _TestClass: type[StereoCondensedReactionGraph] = StereoCondensedReactionGraph
+
+    def test_from_atom_mapped_reaction_smiles(self):
+        rdrxn = rdkit.Chem.rdChemReactions.ReactionFromSmiles(REACTION_SMILES_4007)
+        converter = RDMol2StereoMolGraph()
+
+        scrg = converter(rdrxn)
+
+        reactant_graphs = tuple(
+            RDMol2StereoMolGraph(
+                stereo_complete=False,
+                use_atom_map_number=True,
+                lone_pair_stereo=True,
+                resonance=True,
+            )(rdmol)
+            for rdmol in rdrxn.GetReactants()
+        )
+        product_graphs = tuple(
+            RDMol2StereoMolGraph(
+                stereo_complete=False,
+                use_atom_map_number=True,
+                lone_pair_stereo=True,
+                resonance=True,
+            )(rdmol)
+            for rdmol in rdrxn.GetProducts()
+        )
+        reactant = (
+            reactant_graphs[0]
+            if len(reactant_graphs) == 1
+            else StereoMolGraph.compose(reactant_graphs)
+        )
+        product = (
+            product_graphs[0]
+            if len(product_graphs) == 1
+            else StereoMolGraph.compose(product_graphs)
+        )
+
+        expected = self._TestClass.from_graphs(reactant, product)
+
+        assert scrg == expected
+        assert scrg.bond_stereo
+
+    def test_from_rdrxn(self):
+        rdrxn = rdkit.Chem.rdChemReactions.ReactionFromSmiles(REACTION_SMILES_4007)
+        converter = RDMol2StereoMolGraph()
+
+        scrg = converter(rdrxn)
+
+        assert type(scrg).__name__ == "StereoCondensedReactionGraph"
+        assert scrg.get_formed_bonds() == {Bond((2, 15)), Bond((3, 18))}
+        assert scrg.get_broken_bonds() == set()
+        assert len(scrg.bond_stereo) == 1
 
     @pytest.fixture
     def chiral_ts_geo1(self, data_path):

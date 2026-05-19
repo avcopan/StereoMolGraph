@@ -9,6 +9,7 @@ EXAMPLES_FOLDER = Path(__file__).parent.parent / "examples"
 
 NOTEBOOKS = [
     "stereoiso.ipynb",
+    "reaction_smiles_scrg.ipynb",
 ]
 
 

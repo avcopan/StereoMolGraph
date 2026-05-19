@@ -285,8 +285,11 @@ def ext_sym_num(
 ) -> int:
     """Calculate the upper bound of the external symmetry number for StereoMolGraph"""
 
-    if any(stereo.parity is None for stereo in graph.stereo.values()):
-        raise ValueError("Stereodescriptor parity has to be assigned")
+    # if any(stereo.parity is None for stereo in graph.stereo.values()):
+    #    raise ValueError("Stereodescriptor parity has to be assigned")
+
+    # non hindered bonds will be added to the graph.
+    graph = graph.copy()
 
     if mappings is None:
         mappings = vf2pp_all_isomorphisms(g1=graph, g2=graph, stereo=True)
@@ -294,23 +297,8 @@ def ext_sym_num(
     for mapping in mappings:
         mapping[None] = None
 
-    atom_eq_classes: dict[AtomId | None, set[AtomId | None]]
     atom_eq_classes = get_atom_automorphism_classes(graph, mappings=mappings)
-    atom_eq_classes[None] = {None}
     bond_eq_classes = get_bond_automorphism_classes(graph, mappings=mappings)
-
-    def group_by_eq(atoms: Iterable[OInt]) -> list[set[OInt]]:
-        groups: list[set[OInt]] = []
-        for a in atoms:
-            for g in groups:
-                if any(a in atom_eq_classes[b] for b in g):
-                    g.add(a)
-                    break
-            else:
-                groups.append({a})
-        return groups
-
-    hindered_bonds: set[HinderedBond] = set()
 
     for eq_cls in {frozenset(eq_cls) for eq_cls in bond_eq_classes.values()}:
         eq_cls_iterator = iter(eq_cls)
@@ -321,92 +309,55 @@ def ext_sym_num(
 
         nbrs1 = tuple(a for a in graph.bonded_to(a1) if a != a2)
         nbrs2 = tuple(a for a in graph.bonded_to(a2) if a != a1)
+
         if len(nbrs1) > len(nbrs2):
             a1, a2 = a2, a1
             nbrs1, nbrs2 = nbrs2, nbrs1
-        if len(nbrs1) < 2:
+
+        if len(nbrs1) == 0 or len(nbrs1) == 1:
             continue
 
         stereo1 = graph.get_atom_stereo(a1)
         stereo2 = graph.get_atom_stereo(a2)
-        hb: HinderedBond | None = None
 
         if isinstance(stereo1, Tetrahedral) and isinstance(stereo2, Tetrahedral):
-            eq_cls1 = group_by_eq(set(stereo1.atoms[1:6]) - {a2})
-            eq_cls2 = group_by_eq(set(stereo2.atoms[1:6]) - {a1})
+            eq_cls1 = []
+            for a in set(stereo1.atoms[1:6]) - {a2}:
+                for e in eq_cls1:
+                    if any(a in eq_cls1[b] for b in e):
+                        e.add(a)
+                        break
+                else:  # if for loop is not broken
+                    eq_cls1.append({a})
+
+            eq_cls2 = []
+            for a in set(stereo2.atoms[1:6]) - {a1}:
+                for e in eq_cls2:
+                    if any(a in eq_cls2[b] for b in e):
+                        e.add(a)
+                        break
+                else:  # if for loop is not broken
+                    eq_cls2.append({a})
 
             if len(eq_cls2) > len(eq_cls1):
                 ...  # exchange 1 and 2
 
-            assert stereo1.parity is not None and stereo2.parity is not None
-            parity = stereo1.parity * stereo2.parity
-
-            if len(eq_cls1) in (1, 3):
-                hb_atoms1 = next(
-                    (*p[2:6], a1) for p in stereo1._perm_atoms() if p[1] == a2
+            if len(eq_cls1) == 3 or len(eq_cls1) == 1:
+                for a_perm1 in stereo1._perm_atoms():
+                    if a_perm1[1] == a2:
+                        hb_atoms1 = (*a_perm1[2:6], a1)
+                        break
+                for a_perm2 in stereo2._perm_atoms():
+                    if a_perm2[1] == a1:
+                        hb_atoms2 = (a2, *reversed(a_perm2[2:6]))
+                parity = (
+                    stereo1.parity * stereo2.parity
+                    if stereo1.parity is not None and stereo2.parity is not None
+                    else None
                 )
-                hb_atoms2 = next(
-                    (a2, *reversed(p[2:6])) for p in stereo2._perm_atoms() if p[1] == a1
-                )
-                hb = HinderedBond33(atoms=(*hb_atoms1, *hb_atoms2), parity=parity)
-
+                s = HinderedBond33(atoms=(*hb_atoms1, *hb_atoms2), parity=parity)
             elif len(eq_cls1) == 2 and len(eq_cls2) == 2:
-                eq_cls1.sort(key=len, reverse=True)
-                eq_cls2.sort(key=len, reverse=True)
-                hb_atoms1 = next(
-                    (*p[2:6], a2)
-                    for p in stereo1._perm_atoms()
-                    if p[1] == a2 and eq_cls1[0] == set(p[4:6])
-                )
-                hb_atoms2 = next(
-                    (a1, *reversed(p[2:6]))
-                    for p in stereo2._perm_atoms()
-                    if p[1] == a1 and eq_cls2[0] == set(p[4:6])
-                )
-                hb = HinderedBond33(atoms=(*hb_atoms1, *hb_atoms2), parity=parity)
+                ...
 
-        elif len(nbrs1) == 2 and isinstance(stereo2, Tetrahedral):
-            if len(atom_eq_classes[nbrs1[0]]) == 2 == len(atom_eq_classes[nbrs1[1]]):
-                eq_cls_t = sorted(
-                    group_by_eq(set(stereo2.atoms[1:6]) - {a2}),
-                    key=len,
-                    reverse=True,
-                )
-                hb_atoms2 = next(
-                    (a1, *reversed(p[2:6]))
-                    for p in stereo2._perm_atoms()
-                    if p[1] == a1 and eq_cls_t[0] == set(p[4:6])
-                )
-            else:
-                hb_atoms2 = next(
-                    (*reversed(p[2:6]), a1) for p in stereo2._perm_atoms() if p[1] == a1
-                )
-            hb = HinderedBond23(
-                atoms=(*nbrs1, a1, a2, *hb_atoms2),
-                parity=stereo2.parity,
-            )
-
-        if hb is None:
-            continue
-
-        hindered_bonds.add(hb)
-        for eq_bond in eq_cls_iterator:
-            for mapping in mappings:
-                if frozenset({mapping[a1], mapping[a2]}) == eq_bond:
-                    hindered_bonds.add(
-                        hb.__class__(
-                            atoms=tuple(mapping[a] for a in hb.atoms),
-                            parity=hb.parity,
-                        )
-                    )
-
-    ext_sym_num = 0
-    for mapping in mappings:
-        if all(
-            hb.__class__(atoms=tuple(mapping[a] for a in hb.atoms), parity=hb.parity)
-            in hindered_bonds
-            for hb in hindered_bonds
-        ):
-            ext_sym_num += 1
-
-    return ext_sym_num
+        elif len(nbrs1) == 2 and len(nbrs2) == 3:
+            s = HinderedBond23(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)

@@ -107,7 +107,9 @@ def circular_generator(
     This algorithm refines the atom coloring based on their connectivity.
     Identical to the Weisfeiler-Lehman (1-WL) algorithm.
 
-    :param mg: MolGraph object containing the atoms and their connectivity."""
+    :param mg: MolGraph object containing the atoms and their connectivity.
+    :param max_iter: Maximum number of iterations for refinement.
+        Default is None, which means it will run until convergence."""
     n_atoms = len(mg.atoms)
     if atom_labels is not None:
         assert len(atom_labels) == n_atoms

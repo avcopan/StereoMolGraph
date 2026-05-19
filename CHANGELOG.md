@@ -1,11 +1,6 @@
 # Changelog
 
-
-## [unreleased]
-
-- added GeometryProtocol definition as a potential external interface.
-
-## [0.0.21b]
+## [0.1.0]
 
 ### Changed
 - Graphs are immutable and hashable after .freeze() and .copy() can create mutable copies.

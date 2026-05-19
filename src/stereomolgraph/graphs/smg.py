@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from rdkit import Chem
     from typing_extensions import Self
 
-    from stereomolgraph.coords import GeometryProtocol
+    from stereomolgraph.coords import Geometry
 
     A = TypeVar("A", bound=tuple[int, ...], covariant=True)
     P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
@@ -387,7 +387,7 @@ class StereoMolGraph(MolGraph):
     @classmethod
     def from_geometry_and_bond_order_matrix(
         cls: type[Self],
-        geo: GeometryProtocol,
+        geo: Geometry,
         matrix: np.ndarray,
         threshold: float = 0.5,
         include_bond_order: bool = False,
@@ -416,7 +416,7 @@ class StereoMolGraph(MolGraph):
     @classmethod
     def from_geometry(
         cls,
-        geo: GeometryProtocol,
+        geo: Geometry,
         switching_function: BondsFromDistance = BondsFromDistance(),
     ) -> Self:
         """

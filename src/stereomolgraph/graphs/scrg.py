@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
     from rdkit import Chem
 
-    from stereomolgraph.coords import GeometryProtocol
+    from stereomolgraph.coords import Geometry
 
 # Self is included in typing from 3.11
 if sys.version_info >= (3, 11):
@@ -543,9 +543,9 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
     @classmethod
     def from_geometries(
         cls,
-        reactant_geo: GeometryProtocol,
-        product_geo: GeometryProtocol,
-        ts_geo: None | GeometryProtocol = None,
+        reactant_geo: Geometry,
+        product_geo: Geometry,
+        ts_geo: None | Geometry = None,
         switching_function: BondsFromDistance = BondsFromDistance(),
     ) -> Self:
         """Creates a StereoCondensedReactionGraph from reactant, product and

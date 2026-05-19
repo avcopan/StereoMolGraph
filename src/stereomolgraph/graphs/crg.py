@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from rdkit import Chem
     from typing_extensions import Self
 
-    from stereomolgraph.coords import GeometryProtocol
+    from stereomolgraph.coords import Geometry
 
 
 class Change(Enum):
@@ -354,9 +354,9 @@ class CondensedReactionGraph(MolGraph):
     @classmethod
     def from_geometries(
         cls,
-        reactant_geo: GeometryProtocol,
-        product_geo: GeometryProtocol,
-        ts_geo: GeometryProtocol | None = None,
+        reactant_geo: Geometry,
+        product_geo: Geometry,
+        ts_geo: Geometry | None = None,
         switching_function: BondsFromDistance = BondsFromDistance(),
     ) -> Self:
         """Creates a CondensedReactionGraph from reactant

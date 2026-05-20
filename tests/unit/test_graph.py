@@ -4,8 +4,9 @@ from itertools import permutations
 
 import numpy as np
 import pytest
-import rdkit.Chem  # type: ignore
-import rdkit.Chem.rdDistGeom  # type: ignore
+import rdkit.Chem
+import rdkit.Chem.rdChemReactions
+import rdkit.Chem.rdDistGeom
 
 from stereomolgraph import (
     Bond,
@@ -26,6 +27,13 @@ from stereomolgraph.stereodescriptors import (
     TrigonalBipyramidal,
 )
 from stereomolgraph.xyz2graph import atom_stereo_from_coords
+
+REACTION_SMILES_4007 = (
+    "[CH2:1]1[CH:2]=[CH:3][N:4]([CH3:5])[CH:6]=[C:7]1[C:8]([NH2:9])=[O:10]."
+    "[CH3:11][O:12][C:13](=[O:14])[C:15]([CH3:16])=[O+:17][O-:18]>>"
+    "[CH2:1]1[C@H:2]2[C@@H:3]([N:4]([CH3:5])[CH:6]=[C:7]1[C:8]([NH2:9])=[O:10])"
+    "[O:18][O:17][C:15]2([C:13]([O:12][CH3:11])=[O:14])[CH3:16]"
+)
 
 
 class TestMolGraph:

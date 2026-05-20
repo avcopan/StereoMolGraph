@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
     from rdkit import Chem  # type: ignore
 
-    from stereomolgraph.coords import Geometry
+    from stereomolgraph.coords import GeometryProtocol
 
     N = TypeVar(
         "N",
@@ -705,7 +705,7 @@ class MolGraph:
     @classmethod
     def from_geometry_and_bond_order_matrix(
         cls,
-        geo: Geometry,
+        geo: GeometryProtocol,
         matrix: np.ndarray,
         threshold: float = 0.5,
         include_bond_order: bool = False,
@@ -732,7 +732,7 @@ class MolGraph:
     @classmethod
     def from_geometry(
         cls,
-        geo: Geometry,
+        geo: GeometryProtocol,
         switching_function: BondsFromDistance = BondsFromDistance(),
     ) -> Self:
         return connectivity_from_geometry(cls, geo, switching_function)

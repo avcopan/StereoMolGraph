@@ -638,4 +638,39 @@ class HinderedBond13(
         return bond
 
 
-HinderedBond = HinderedBond33 | HinderedBond23 | HinderedBond13 | PlanarBond | AtropBond
+class HinderedBond12(
+    _StereoMixin[tuple[OInt, int, int, OInt, OInt], None | Literal[0]],
+):
+    r"""
+    Represents a bond that cannot freely rotate::
+            parity = 1
+          0         3
+           \      /
+            1 - 2
+                  \
+                   4
+    """
+
+    parity = 0
+    inversion = None
+    _bond: Bond
+    PERMUTATION_GROUP = ((0, 1, 2, 3, 4),)
+
+    def get_isomers(self) -> set[Self]:
+        return {self}
+
+    @property
+    def bond(self) -> Bond:
+        bond = frozenset(self.atoms[1:3])
+        assert len(bond) == 2
+        return bond
+
+
+HinderedBond = (
+    HinderedBond33
+    | HinderedBond23
+    | HinderedBond13
+    | HinderedBond12
+    | PlanarBond
+    | AtropBond
+)

@@ -9,6 +9,7 @@ from stereomolgraph.algorithms.circular import color_refine_smg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.stereodescriptors import (
     HinderedBond,
+    HinderedBond12,
     HinderedBond13,
     HinderedBond23,
     HinderedBond33,
@@ -119,6 +120,9 @@ def bond_symmetry_number(
     bond: Bond,
     mappings: Iterable[Mapping[int, int]] | None = None,
 ) -> int:
+    if Bond(bond) not in graph.bonds:
+        raise ValueError("Bond has to be part of the graph")
+
     if mappings is None:
         mappings = vf2pp_all_isomorphisms(graph, graph, stereo=True)
 
@@ -142,7 +146,12 @@ def bond_symmetry_number(
         s = HinderedBond13(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
     elif len(nbrs1) == 2 and len(nbrs2) == 2:
         s = PlanarBond(atoms=(*nbrs1, a1, a2, *nbrs2), parity=0)
-
+    elif len(nbrs1) == 1 and len(nbrs2) == 2:
+        s = HinderedBond12(atoms=(*nbrs1, a1, a2, *nbrs2), parity=0)
+    else:
+        raise NotImplementedError(
+            "Bonds with more than 3 substituents are not supported"
+        )
     unique_reorderings: set[HinderedBond] = set()
     bond_class = s.__class__
 
@@ -177,7 +186,7 @@ def ext_sym_num(
     for mapping in mappings:
         mapping[None] = None
 
-    atom_eq_classes: dict[AtomId | None, set[AtomId | None]]
+    # atom_eq_classes: dict[AtomId | None, set[AtomId | None]]
     atom_eq_classes = atom_automorphism_classes(graph, mappings=mappings)
     atom_eq_classes[None] = {None}
     bond_eq_classes = bond_automorphism_classes(graph, mappings=mappings)
@@ -246,7 +255,8 @@ def ext_sym_num(
                     for p in stereo2._perm_atoms()
                     if p[1] == a1 and eq_cls2[0] == set(p[4:6])
                 )
-                hb = HinderedBond33(atoms=(*hb_atoms1, *hb_atoms2), parity=parity)
+
+                hb = HinderedBond33(atoms=tuple(*hb_atoms1, *hb_atoms2), parity=parity)
 
         elif len(nbrs1) == 2 and isinstance(stereo2, Tetrahedral):
             if len(atom_eq_classes[nbrs1[0]]) == 2 == len(atom_eq_classes[nbrs1[1]]):

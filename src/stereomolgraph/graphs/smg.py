@@ -80,14 +80,11 @@ class StereoMolGraph(MolGraph):
         o_color_array = other._get_colors()
         s_color_array = self._get_colors()
 
-        o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
-        s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
-
         return any(
             vf2pp_all_isomorphisms(
                 self,
                 other,
-                atom_labels=(s_colors, o_colors),
+                atom_labels=(s_color_array, o_color_array),
                 stereo=True,
                 stereo_change=False,
                 subgraph=False,

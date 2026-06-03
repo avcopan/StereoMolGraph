@@ -1167,6 +1167,25 @@ class TestStereoCondensedReactionGraph(TestStereoMolGraph, TestCondensedReaction
             chiral_reaction_scrg2.copy(frozen=True)
         )
 
+    def test_ts_uses_single_defined_stereo_change(self):
+        scrg = self._TestClass()
+        scrg.add_atom(0, "C")
+        scrg.add_atom(1, "F")
+        scrg.add_atom(2, "Br")
+        scrg.add_atom(3, "Cl")
+        scrg.add_atom(4, "H")
+        scrg.add_bond(0, 1)
+        scrg.add_bond(0, 2)
+        scrg.add_bond(0, 3)
+        scrg.add_broken_bond(0, 4)
+        scrg.set_atom_stereo_change(broken=Tetrahedral((0, 1, 2, 3, 4), -1))
+
+        ts = scrg.ts()
+        strict_ts = scrg.ts(infer_non_fleeting_stereo=False)
+
+        assert ts.get_atom_stereo(0) == Tetrahedral((0, 1, 2, 3, 4), -1)
+        assert strict_ts.get_atom_stereo(0) is None
+
     def test_hash_stereo_reaction_with_ts(
         self, chiral_reaction_chiral_ts_scrg1, chiral_reaction_chiral_ts_scrg2
     ):

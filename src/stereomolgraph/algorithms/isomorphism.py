@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, NamedTuple
+
+import numpy as np
 
 from stereomolgraph.algorithms.circular import label_hash
 
@@ -293,8 +296,8 @@ def vf2pp_all_isomorphisms(
     | StereoCondensedReactionGraph,
     atom_labels: None
     | tuple[
-        Mapping[AtomId, np.int64],
-        Mapping[AtomId, np.int64],
+        np.ndarray[tuple[int], np.dtype[np.int64]],
+        np.ndarray[tuple[int], np.dtype[np.int64]],
     ] = None,
     stereo: bool = False,
     stereo_change: bool = False,
@@ -306,8 +309,8 @@ def vf2pp_all_isomorphisms(
 
     :param g1: First graph
     :param g2: Second graph
-    :param atom_labels: Optional precomputed atom labels for both graphs, if none
-                        defaults to color refinement.
+    :param atom_labels: Optional precomputed graph-ordered atom-label arrays for both
+                        graphs, if none defaults to color refinement.
     :param stereo: Whether to consider stereochemistry in the isomorphism
     :param stereo_change: Whether to consider stereochemistry changes in the isomorphism
     :param subgraph: Whether to find subgraph isomorphisms instead of graph isomorphisms
@@ -315,8 +318,27 @@ def vf2pp_all_isomorphisms(
     :return: An iterator of all isomorphisms, where each isomorphism is represented as a
              dictionary mapping atom ids of g1 to atom ids of g2.
     """
+    normalized_atom_labels = None
+    if atom_labels is not None:
+        g1_atom_labels_array, g2_atom_labels_array = atom_labels
+
+        if len(g1_atom_labels_array) != len(g1.atoms):
+            raise ValueError("atom_labels must contain one label for each atom.")
+        if len(g2_atom_labels_array) != len(g2.atoms):
+            raise ValueError("atom_labels must contain one label for each atom.")
+
+        g1_atom_labels_by_atom = {
+            atom: label
+            for atom, label in zip(g1.atoms, g1_atom_labels_array, strict=True)
+        }
+        g2_atom_labels_by_atom = {
+            atom: label
+            for atom, label in zip(g2.atoms, g2_atom_labels_array, strict=True)
+        }
+        normalized_atom_labels = (g1_atom_labels_by_atom, g2_atom_labels_by_atom)
+
     if params_state := _sanity_check_and_init(
-        g1, g2, atom_labels, stereo, stereo_change, subgraph
+        g1, g2, normalized_atom_labels, stereo, stereo_change, subgraph
     ):
         params, state = params_state
     else:

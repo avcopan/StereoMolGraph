@@ -90,14 +90,11 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         o_color_array = other._get_colors()
         s_color_array = self._get_colors()
 
-        o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
-        s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
-
         return any(
             vf2pp_all_isomorphisms(
                 self,
                 other,
-                atom_labels=(s_colors, o_colors),
+                atom_labels=(s_color_array, o_color_array),
                 stereo=True,
                 stereo_change=True,
                 subgraph=False,
@@ -337,7 +334,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
         return product
 
-    def ts(self, keep_attributes: bool = True) -> StereoMolGraph:
+    def ts(self, infer_non_fleeting_stereo: bool = True) -> StereoMolGraph:
         """Returns a StereoCondensedReactionGraph representing the transition state of
         the reaction. Stereochemistry is taken from the fleeting stereo changes if
         present, otherwise from the broken or formed stereo changes. If both broken and
@@ -346,13 +343,12 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         transition state graph."""
 
         ts = StereoMolGraph(self)
-        ts._atom_stereo = deepcopy(self._atom_stereo)
-        ts._bond_stereo = deepcopy(self._bond_stereo)
 
         for _atom, change_dict in self._atom_stereo_change.items():
             if stereo := change_dict[Change.FLEETING]:
                 ts.set_atom_stereo(stereo)
-            else:
+
+            elif infer_non_fleeting_stereo:
                 broken_stereo = change_dict[Change.BROKEN]
                 formed_stereo = change_dict[Change.FORMED]
                 if broken_stereo and not formed_stereo:
@@ -363,7 +359,8 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         for _bond, change_dict in self._bond_stereo_change.items():
             if stereo := change_dict[Change.FLEETING]:
                 ts.set_bond_stereo(stereo)
-            else:
+
+            elif infer_non_fleeting_stereo:
                 broken_stereo = change_dict[Change.BROKEN]
                 formed_stereo = change_dict[Change.FORMED]
                 if broken_stereo and not formed_stereo:

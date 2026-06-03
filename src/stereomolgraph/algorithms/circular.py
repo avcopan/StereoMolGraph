@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict, deque
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
@@ -395,17 +395,23 @@ def _reaction_generator(
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
     max_iter: int | None = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
+    if hasattr(graph, "atom_stereo_changes") and hasattr(graph, "bond_stereo_changes"):
+        ts = cast("StereoCondensedReactionGraph", graph).ts(
+            infer_non_fleeting_stereo=False
+        )
+    else:
+        ts = graph.ts()
+
     n_atoms = graph.n_atoms
     reactant = graph.reactant()
     product = graph.product()
-    ts = graph.ts()
     assert n_atoms == reactant.n_atoms
     assert n_atoms == product.n_atoms
     assert n_atoms == ts.n_atoms
     color_iters = [
-        generator(graph.reactant(), atom_labels=atom_labels),
-        generator(graph.product(), atom_labels=atom_labels),
-        generator(graph.ts(), atom_labels=atom_labels),
+        generator(reactant, atom_labels=atom_labels),
+        generator(product, atom_labels=atom_labels),
+        generator(ts, atom_labels=atom_labels),
     ]
 
     stacked: np.ndarray | None = None

@@ -279,7 +279,7 @@ class CondensedReactionGraph(MolGraph):
                 product.add_bond(*bond, **attrs)
         return product
 
-    def _ts(self, keep_attributes: bool = True) -> MolGraph:
+    def ts(self, keep_attributes: bool = True) -> MolGraph:
         return MolGraph(self)
 
     def reverse_reaction(self) -> Self:

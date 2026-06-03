@@ -337,7 +337,14 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
         return product
 
-    def _ts(self, keep_attributes: bool = True) -> StereoMolGraph:
+    def ts(self, keep_attributes: bool = True) -> StereoMolGraph:
+        """Returns a StereoCondensedReactionGraph representing the transition state of
+        the reaction. Stereochemistry is taken from the fleeting stereo changes if
+        present, otherwise from the broken or formed stereo changes. If both broken and
+        formed stereo changes are present for a stereo element, the transition state
+        stereo is not defined and the stereo information is not included in the
+        transition state graph."""
+
         ts = StereoMolGraph(self)
         ts._atom_stereo = deepcopy(self._atom_stereo)
         ts._bond_stereo = deepcopy(self._bond_stereo)
@@ -345,10 +352,25 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         for _atom, change_dict in self._atom_stereo_change.items():
             if stereo := change_dict[Change.FLEETING]:
                 ts.set_atom_stereo(stereo)
+            else:
+                broken_stereo = change_dict[Change.BROKEN]
+                formed_stereo = change_dict[Change.FORMED]
+                if broken_stereo and not formed_stereo:
+                    ts.set_atom_stereo(broken_stereo)
+                elif formed_stereo and not broken_stereo:
+                    ts.set_atom_stereo(formed_stereo)
 
         for _bond, change_dict in self._bond_stereo_change.items():
             if stereo := change_dict[Change.FLEETING]:
                 ts.set_bond_stereo(stereo)
+            else:
+                broken_stereo = change_dict[Change.BROKEN]
+                formed_stereo = change_dict[Change.FORMED]
+                if broken_stereo and not formed_stereo:
+                    ts.set_bond_stereo(broken_stereo)
+                elif formed_stereo and not broken_stereo:
+                    ts.set_bond_stereo(formed_stereo)
+
         return ts
 
     def reverse_reaction(self) -> Self:

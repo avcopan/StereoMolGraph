@@ -202,10 +202,54 @@ def ext_sym_num(
                 groups.append({a})
         return groups
 
-    hindered_bonds: set[HinderedBond] = set()
+    def ordered_tetrahedral_neighbors(
+        stereo: Tetrahedral,
+        bonded_atom: AtomId,
+        *,
+        is_left: bool,
+        unique_neighbor: OInt = None,
+    ) -> tuple[OInt, OInt, OInt]:
+        for permuted_atoms in stereo._perm_atoms():
+            if permuted_atoms[1] != bonded_atom:
+                continue
+            if unique_neighbor is not None and permuted_atoms[2] != unique_neighbor:
+                continue
+
+            ordered_neighbors = (
+                permuted_atoms[2],
+                permuted_atoms[3],
+                permuted_atoms[4],
+            )
+            if (is_left and stereo.parity == 1) or (
+                not is_left and stereo.parity == -1
+            ):
+                return ordered_neighbors
+
+            return (
+                ordered_neighbors[2],
+                ordered_neighbors[1],
+                ordered_neighbors[0],
+            )
+
+        raise ValueError(
+            f"Could not order tetrahedral neighbors for atom {stereo.central_atom}"
+        )
+
+    def singled_out_neighbor(groups: list[set[OInt]]) -> OInt:
+        if len(groups) != 2:
+            return None
+
+        singleton_group = next((group for group in groups if len(group) == 1), None)
+        if singleton_group is None:
+            return None
+
+        return next(iter(singleton_group))
+
+    hindered_bonds: dict[Bond, HinderedBond] = {}
 
     for eq_cls in {frozenset(eq_cls) for eq_cls in bond_eq_classes.values()}:
-        eq_cls_iterator = iter(eq_cls)
+        eq_bonds = tuple(eq_cls)
+        eq_cls_iterator = iter(eq_bonds)
         a1, a2 = next(eq_cls_iterator)
 
         if graph.get_bond_stereo({a1, a2}) is not None:
@@ -216,6 +260,7 @@ def ext_sym_num(
         if len(nbrs1) > len(nbrs2):
             a1, a2 = a2, a1
             nbrs1, nbrs2 = nbrs2, nbrs1
+
         if len(nbrs1) < 2:
             continue
 
@@ -224,39 +269,65 @@ def ext_sym_num(
         hb: HinderedBond | None = None
 
         if isinstance(stereo1, Tetrahedral) and isinstance(stereo2, Tetrahedral):
-            eq_cls1 = group_by_eq(set(stereo1.atoms[1:6]) - {a2})
-            eq_cls2 = group_by_eq(set(stereo2.atoms[1:6]) - {a1})
+            eq_cls1 = group_by_eq(set(stereo1.atoms[1:5]) - {a2})
+            eq_cls2 = group_by_eq(set(stereo2.atoms[1:5]) - {a1})
 
             if len(eq_cls2) > len(eq_cls1):
-                ...  # exchange 1 and 2
+                a1, a2 = a2, a1
+                stereo1, stereo2 = stereo2, stereo1
+                eq_cls1, eq_cls2 = eq_cls2, eq_cls1
 
             assert stereo1.parity is not None and stereo2.parity is not None
             parity = stereo1.parity * stereo2.parity
+            pattern1 = tuple(sorted((len(group) for group in eq_cls1), reverse=True))
+            pattern2 = tuple(sorted((len(group) for group in eq_cls2), reverse=True))
 
-            if len(eq_cls1) in (1, 3):
-                hb_atoms1 = next(
-                    (*p[2:6], a1) for p in stereo1._perm_atoms() if p[1] == a2
+            if (pattern1, pattern2) in {
+                ((3,), (3,)),
+                ((1, 1, 1), (3,)),
+                ((1, 1, 1), (2, 1)),
+                ((1, 1, 1), (1, 1, 1)),
+            }:
+                left3 = ordered_tetrahedral_neighbors(
+                    stereo1,
+                    a2,
+                    is_left=True,
                 )
-                hb_atoms2 = next(
-                    (a2, *reversed(p[2:6])) for p in stereo2._perm_atoms() if p[1] == a1
+                right3 = ordered_tetrahedral_neighbors(
+                    stereo2,
+                    a1,
+                    is_left=False,
                 )
-                hb = HinderedBond33(atoms=(*hb_atoms1, *hb_atoms2), parity=parity)
+                hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
 
-            elif len(eq_cls1) == 2 and len(eq_cls2) == 2:
-                eq_cls1.sort(key=len, reverse=True)
-                eq_cls2.sort(key=len, reverse=True)
-                hb_atoms1 = next(
-                    (*p[2:6], a2)
-                    for p in stereo1._perm_atoms()
-                    if p[1] == a2 and eq_cls1[0] == set(p[4:6])
+            elif (pattern1, pattern2) == ((2, 1), (2, 1)):
+                left3 = ordered_tetrahedral_neighbors(
+                    stereo1,
+                    a2,
+                    is_left=True,
+                    unique_neighbor=singled_out_neighbor(eq_cls1),
                 )
-                hb_atoms2 = next(
-                    (a1, *reversed(p[2:6]))
-                    for p in stereo2._perm_atoms()
-                    if p[1] == a1 and eq_cls2[0] == set(p[4:6])
+                right3 = ordered_tetrahedral_neighbors(
+                    stereo2,
+                    a1,
+                    is_left=False,
+                    unique_neighbor=singled_out_neighbor(eq_cls2),
                 )
+                hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
 
-                hb = HinderedBond33(atoms=tuple(*hb_atoms1, *hb_atoms2), parity=parity)
+            elif (pattern1, pattern2) == ((2, 1), (3,)):
+                left3 = ordered_tetrahedral_neighbors(
+                    stereo1,
+                    a2,
+                    is_left=True,
+                    unique_neighbor=singled_out_neighbor(eq_cls1),
+                )
+                right3 = ordered_tetrahedral_neighbors(
+                    stereo2,
+                    a1,
+                    is_left=False,
+                )
+                hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
 
         elif len(nbrs1) == 2 and isinstance(stereo2, Tetrahedral):
             if len(atom_eq_classes[nbrs1[0]]) == 2 == len(atom_eq_classes[nbrs1[1]]):
@@ -282,23 +353,22 @@ def ext_sym_num(
         if hb is None:
             continue
 
-        hindered_bonds.add(hb)
+        hindered_bonds[frozenset({a1, a2})] = hb
         for eq_bond in eq_cls_iterator:
             for mapping in mappings:
-                if frozenset({mapping[a1], mapping[a2]}) == eq_bond:
-                    hindered_bonds.add(
-                        hb.__class__(
-                            atoms=tuple(mapping[a] for a in hb.atoms),
-                            parity=hb.parity,
-                        )
+                bond = frozenset({mapping[a1], mapping[a2]})
+                if bond == eq_bond:
+                    hindered_bonds[bond] = hb.__class__(
+                        atoms=tuple(mapping[a] for a in hb.atoms),
+                        parity=hb.parity,
                     )
 
     ext_sym_num = 0
     for mapping in mappings:
         if all(
             hb.__class__(atoms=tuple(mapping[a] for a in hb.atoms), parity=hb.parity)
-            in hindered_bonds
-            for hb in hindered_bonds
+            in hindered_bonds.values()
+            for hb in hindered_bonds.values()
         ):
             ext_sym_num += 1
 

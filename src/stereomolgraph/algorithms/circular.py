@@ -398,14 +398,14 @@ def _reaction_generator(
     n_atoms = graph.n_atoms
     reactant = graph.reactant()
     product = graph.product()
-    ts = graph._ts()
+    ts = graph.ts()
     assert n_atoms == reactant.n_atoms
     assert n_atoms == product.n_atoms
     assert n_atoms == ts.n_atoms
     color_iters = [
         generator(graph.reactant(), atom_labels=atom_labels),
         generator(graph.product(), atom_labels=atom_labels),
-        generator(graph._ts(), atom_labels=atom_labels),
+        generator(graph.ts(), atom_labels=atom_labels),
     ]
 
     stacked: np.ndarray | None = None

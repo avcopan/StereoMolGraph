@@ -18,6 +18,7 @@ from stereomolgraph import (
 from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.graphs.crg import Change
 from stereomolgraph.graphs.scrg import ChangeDict
+from stereomolgraph.ipython import View2D
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
 from stereomolgraph.stereodescriptors import (
     AtropBond,
@@ -1185,6 +1186,73 @@ class TestStereoCondensedReactionGraph(TestStereoMolGraph, TestCondensedReaction
 
         assert ts.get_atom_stereo(0) == Tetrahedral((0, 1, 2, 3, 4), -1)
         assert strict_ts.get_atom_stereo(0) is None
+
+    def test_view2d_scrg_uses_dotted_reaction_bonds_and_highlights_bond_stereo(self):
+        scrg = self._TestClass()
+        scrg.add_atom(0, "C")
+        scrg.add_atom(1, "H")
+        scrg.add_atom(2, "H")
+        scrg.add_atom(3, "C")
+        scrg.add_atom(4, "H")
+        scrg.add_atom(5, "H")
+        scrg.add_atom(6, "H")
+        scrg.add_atom(7, "C")
+        scrg.add_atom(8, "H")
+        scrg.add_atom(9, "H")
+        scrg.add_atom(10, "C")
+        scrg.add_atom(11, "H")
+        scrg.add_atom(12, "H")
+        scrg.add_atom(13, "H")
+
+        scrg.add_bond(0, 1)
+        scrg.add_bond(0, 2)
+        scrg.add_bond(0, 3)
+        scrg.add_bond(3, 4)
+        scrg.add_bond(3, 5)
+        scrg.add_formed_bond(3, 6)
+        scrg.set_bond_stereo_change(broken=PlanarBond((1, 2, 0, 3, 4, 5), 0))
+
+        scrg.add_bond(7, 8)
+        scrg.add_bond(7, 9)
+        scrg.add_bond(7, 10)
+        scrg.add_bond(10, 11)
+        scrg.add_bond(10, 12)
+        scrg.add_broken_bond(10, 13)
+        scrg.set_bond_stereo_change(formed=PlanarBond((8, 9, 7, 10, 11, 12), 0))
+
+        mol, ht = View2D(generate_bond_orders=False)._to_mol(scrg)
+
+        broken_stereo_idx = mol.GetBondBetweenAtoms(0, 3).GetIdx()
+        formed_reaction_idx = mol.GetBondBetweenAtoms(3, 6).GetIdx()
+        formed_stereo_idx = mol.GetBondBetweenAtoms(7, 10).GetIdx()
+        broken_reaction_idx = mol.GetBondBetweenAtoms(10, 13).GetIdx()
+
+        assert mol.GetBondWithIdx(broken_stereo_idx).GetBondType() == rdkit.Chem.rdchem.BondType.AROMATIC
+        assert mol.GetBondWithIdx(formed_stereo_idx).GetBondType() == rdkit.Chem.rdchem.BondType.AROMATIC
+        assert mol.GetBondWithIdx(formed_reaction_idx).GetBondType() == rdkit.Chem.rdchem.BondType.HYDROGEN
+        assert mol.GetBondWithIdx(broken_reaction_idx).GetBondType() == rdkit.Chem.rdchem.BondType.HYDROGEN
+
+        assert ht.highlight_bond_colors[broken_stereo_idx] == (1, 0, 0)
+        assert ht.highlight_bond_colors[formed_stereo_idx] == (0, 0, 1)
+        assert ht.bond_colors[formed_reaction_idx] == (0, 0, 1)
+        assert ht.bond_colors[broken_reaction_idx] == (1, 0, 0)
+
+        svg = View2D(generate_bond_orders=False).svg(scrg)
+        formed_reaction_lines = [
+            line for line in svg.splitlines() if f"class='bond-{formed_reaction_idx} " in line
+        ]
+        broken_reaction_lines = [
+            line for line in svg.splitlines() if f"class='bond-{broken_reaction_idx} " in line
+        ]
+
+        assert any(
+            "stroke:#0000FF" in line and "stroke-dasharray" in line
+            for line in formed_reaction_lines
+        )
+        assert any(
+            "stroke:#FF0000" in line and "stroke-dasharray" in line
+            for line in broken_reaction_lines
+        )
 
     def test_hash_stereo_reaction_with_ts(
         self, chiral_reaction_chiral_ts_scrg1, chiral_reaction_chiral_ts_scrg2

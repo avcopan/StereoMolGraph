@@ -207,7 +207,17 @@ class CondensedReactionGraph(MolGraph):
             allow_charged_fragments=allow_charged_fragments,
             charge=0,
         )
-        set_crg_bond_orders(graph=self, mol=mol, idx_map_num_dict=idx_map_num_dict)
+
+        if generate_bond_orders:
+            mol = set_crg_bond_orders(
+                graph=self,
+                mol=mol,
+                idx_map_num_dict=idx_map_num_dict,
+                generate_bond_orders=generate_bond_orders,
+                allow_charged_fragments=allow_charged_fragments,
+                charge=charge,
+            )
+
         return mol, idx_map_num_dict
 
     def to_rdmol(

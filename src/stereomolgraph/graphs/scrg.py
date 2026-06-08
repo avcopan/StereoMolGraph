@@ -467,6 +467,8 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             mol = set_crg_bond_orders(
                 graph=self,
                 mol=mol,
+                generate_bond_orders=generate_bond_orders,
+                allow_charged_fragments=allow_charged_fragments,
                 charge=charge,
                 idx_map_num_dict=idx_map_num_dict,
             )

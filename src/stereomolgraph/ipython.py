@@ -1,7 +1,6 @@
 # pyright: standard
 from __future__ import annotations
 
-import re
 from typing import NamedTuple
 
 from rdkit import Chem  # type: ignore
@@ -34,32 +33,6 @@ class _HighlightTuple(NamedTuple):
     highlight_atom_colors: dict
     bonds_to_highlight: list
     highlight_bond_colors: dict
-    bond_colors: dict
-
-
-_BOND_PATH_PATTERN = re.compile(
-    r"(<path class='bond-(\d+)\b[^']*' d='[^']*' style=')([^']*)(')"
-)
-
-
-def _rgb_to_hex(color: tuple[float, float, float]) -> str:
-    return "#{:02X}{:02X}{:02X}".format(*(int(component * 255) for component in color))
-
-
-def _recolor_svg_bonds(svg: str, bond_colors: dict[int, tuple[float, float, float]]) -> str:
-    def replace_bond_style(match: re.Match[str]) -> str:
-        bond_idx = int(match.group(2))
-        color = bond_colors.get(bond_idx)
-        if color is None:
-            return match.group(0)
-
-        style = match.group(3)
-        hex_color = _rgb_to_hex(color)
-        style = style.replace("stroke:#000000;", f"stroke:{hex_color};")
-        style = style.replace("fill:#000000;", f"fill:{hex_color};")
-        return f"{match.group(1)}{style}{match.group(4)}"
-
-    return _BOND_PATH_PATTERN.sub(replace_bond_style, svg)
 
 
 class View2D(NamedTuple):
@@ -117,7 +90,6 @@ class View2D(NamedTuple):
 
         bonds_to_highlight = []
         highlight_bond_colors = {}
-        bond_colors = {}
         formed_bonds = set()
         broken_bonds = set()
 
@@ -163,21 +135,15 @@ class View2D(NamedTuple):
                 atoms_idx = [map_num_idx_dict[a] for a in bond]
                 bond_idx = mol.GetBondBetweenAtoms(*atoms_idx).GetIdx()
                 mol.GetBondWithIdx(bond_idx).SetBondType(Chem.rdchem.BondType.HYDROGEN)
-                if isinstance(graph, StereoCondensedReactionGraph):
-                    bond_colors[bond_idx] = (0, 0, 1)  # blue
-                else:
-                    bonds_to_highlight.append(bond_idx)
-                    highlight_bond_colors[bond_idx] = (0, 0, 1)  # blue
+                bonds_to_highlight.append(bond_idx)
+                highlight_bond_colors[bond_idx] = (0, 0, 1)  # blue
 
             for bond in broken_bonds:
                 atoms_idx = [map_num_idx_dict[a] for a in bond]
                 bond_idx = mol.GetBondBetweenAtoms(*atoms_idx).GetIdx()
                 mol.GetBondWithIdx(bond_idx).SetBondType(Chem.rdchem.BondType.HYDROGEN)
-                if isinstance(graph, StereoCondensedReactionGraph):
-                    bond_colors[bond_idx] = (1, 0, 0)  # red
-                else:
-                    bonds_to_highlight.append(bond_idx)
-                    highlight_bond_colors[bond_idx] = (1, 0, 0)  # red
+                bonds_to_highlight.append(bond_idx)
+                highlight_bond_colors[bond_idx] = (1, 0, 0)  # red
 
         if isinstance(graph, StereoCondensedReactionGraph):
             for bond, change_dict in graph.bond_stereo_changes.items():
@@ -231,7 +197,6 @@ class View2D(NamedTuple):
             highlight_atom_colors=highlight_atom_colors,
             bonds_to_highlight=bonds_to_highlight,
             highlight_bond_colors=highlight_bond_colors,
-            bond_colors=bond_colors,
         )
         return mol, ht
 
@@ -264,7 +229,6 @@ class View2D(NamedTuple):
 
         drawer.FinishDrawing()
         svg = drawer.GetDrawingText()
-        svg = _recolor_svg_bonds(svg, ht.bond_colors)
         return svg
 
     def __call__(

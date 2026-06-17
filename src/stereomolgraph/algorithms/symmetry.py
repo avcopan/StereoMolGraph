@@ -274,7 +274,7 @@ def ext_sym_num(
         stereo2 = graph.get_atom_stereo(a2)
         hb: HinderedBond | None = None
 
-        # e. Handle the case where both atoms are tetrahedral
+        # e. Assign HinderedBond33 for two tetrahedral atoms
         if isinstance(stereo1, Tetrahedral) and isinstance(stereo2, Tetrahedral):
             eq_cls1 = group_by_eq(set(stereo1.atoms[1:5]) - {a2})
             eq_cls2 = group_by_eq(set(stereo2.atoms[1:5]) - {a1})
@@ -312,24 +312,14 @@ def ext_sym_num(
             )
             hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
 
+        # f. Assign HinderedBond23 for an sp2 and a tetrahedral atom
         elif len(nbrs1) == 2 and isinstance(stereo2, Tetrahedral):
-            if len(atom_eq_classes[nbrs1[0]]) == 2 == len(atom_eq_classes[nbrs1[1]]):
-                eq_cls_t = sorted(
-                    group_by_eq(set(stereo2.atoms[1:6]) - {a2}),
-                    key=len,
-                    reverse=True,
-                )
-                hb_atoms2 = next(
-                    (a1, *reversed(p[2:6]))
-                    for p in stereo2._perm_atoms()
-                    if p[1] == a1 and eq_cls_t[0] == set(p[4:6])
-                )
-            else:
-                hb_atoms2 = next(
-                    (*reversed(p[2:6]), a1) for p in stereo2._perm_atoms() if p[1] == a1
-                )
+            # i. Get the right neighbors in an order consistent with their parity
+            # (If I understand correctly, the parity in this case is arbitrary)
+            right3 = ordered_tetrahedral_neighbors(stereo2, a1, is_left=False)
+            # i. If both external neighbors of a1 have orbits of length 2
             hb = HinderedBond23(
-                atoms=(*nbrs1, a1, a2, *hb_atoms2),
+                atoms=(*nbrs1, a1, a2, *right3),
                 parity=stereo2.parity,
             )
 

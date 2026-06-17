@@ -172,7 +172,7 @@ def bond_symmetry_number(
     return len(unique_reorderings)
 
 
-def ext_sym_num(
+def external_symmetry_number(
     graph: StereoMolGraph, mappings: Iterable[dict[int, int]] | None = None
 ) -> int:
     """Calculate the upper bound of the external symmetry number for StereoMolGraph"""

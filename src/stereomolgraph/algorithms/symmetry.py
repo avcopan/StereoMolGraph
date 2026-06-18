@@ -315,13 +315,12 @@ def external_symmetry_number(
         # f. Assign HinderedBond23 for an sp2 and a tetrahedral atom
         elif len(nbrs1) == 2 and isinstance(stereo2, Tetrahedral):
             # i. Get the right neighbors in an order consistent with their parity
-            # (If I understand correctly, the parity in this case is arbitrary)
-            right3 = ordered_tetrahedral_neighbors(stereo2, a1, is_left=False)
-            # i. If both external neighbors of a1 have orbits of length 2
-            hb = HinderedBond23(
-                atoms=(*nbrs1, a1, a2, *right3),
-                parity=stereo2.parity,
+            # (Reverse the order of the external neighbors since the parity is opposite)
+            right5 = next(
+                (a1, a2, *reversed(p[2:])) for p in stereo2._perm_atoms() if p[1] == a1
             )
+            # i. If both external neighbors of a1 have orbits of length 2
+            hb = HinderedBond23(atoms=(*nbrs1, *right5), parity=stereo2.parity)
 
         if hb is None:
             continue
